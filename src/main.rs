@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, process::Command};
 
 use clap::{
     ValueEnum, arg,
@@ -81,6 +81,13 @@ fn bump_package_version(release_type: &ReleaseKind, directory: PathBuf) -> std::
 
     fs::write(directory.join("Cargo.toml"), doc.to_string()).unwrap();
 
+    Command::new("cargo")
+        .arg("check")
+        .arg("--workspace")
+        .current_dir(directory)
+        .status()
+        .unwrap();
+
     next_version
 }
 
@@ -89,7 +96,11 @@ fn commit_changes(repo: &Repository, next_version: &str) {
 
     let mut index = repo.index().unwrap();
     index
-        .add_all(["Cargo.toml"].iter(), git2::IndexAddOption::DEFAULT, None)
+        .add_all(
+            ["Cargo.toml", "Cargo.lock"].iter(),
+            git2::IndexAddOption::DEFAULT,
+            None,
+        )
         .unwrap();
     index.write().unwrap();
 
