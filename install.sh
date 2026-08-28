@@ -240,13 +240,13 @@ install_binary() {
         echo "Installing to $INSTALL_DIR..."
 
         if [ -w "$INSTALL_DIR" ]; then
-            install -m 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
+            install -sm 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
                 echo "Error: Installation failed" >&2
                 rm -rf "$tmp_dir"
                 exit 1
             }
         else
-            sudo install -m 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
+            sudo install -sm 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
                 echo "Error: Installation failed" >&2
                 echo "Make sure you have sudo privileges or set LOC_INSTALL to a writable directory" >&2
                 rm -rf "$tmp_dir"
