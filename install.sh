@@ -3,7 +3,7 @@
 set -e
 
 REPO="StanleyMasinde/git-release"
-BIN_NAME="git-release "
+BIN_NAME="git-release"
 VERSION="${1:-latest}"
 INSTALL_DIR="${LOC_INSTALL:-/usr/local/bin}"
 
@@ -225,22 +225,28 @@ install_binary() {
             ;;
     esac
 
-    if [ -f "$BIN_NAME" ] || [ -f "${BIN_NAME}.exe" ]; then
-        local binary_name="$BIN_NAME"
-        [ -f "${BIN_NAME}.exe" ] && binary_name="${BIN_NAME}.exe"
+    local binary_path=""
+    if [ -f "$BIN_NAME" ]; then
+        binary_path="$BIN_NAME"
+    elif [ -f "${BIN_NAME}.exe" ]; then
+        binary_path="${BIN_NAME}.exe"
+    else
+        binary_path=$(find . -type f \( -name "$BIN_NAME" -o -name "${BIN_NAME}.exe" \) -print -quit 2>/dev/null || true)
+    fi
 
-        chmod +x "$binary_name" 2>/dev/null || true
+    if [ -n "$binary_path" ] && [ -f "$binary_path" ]; then
+        chmod +x "$binary_path" 2>/dev/null || true
 
         echo "Installing to $INSTALL_DIR..."
 
         if [ -w "$INSTALL_DIR" ]; then
-            install -m 755 "$binary_name" "$INSTALL_DIR/$BIN_NAME" || {
+            install -m 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
                 echo "Error: Installation failed" >&2
                 rm -rf "$tmp_dir"
                 exit 1
             }
         else
-            sudo install -sm 755 "$binary_name" "$INSTALL_DIR/$BIN_NAME" || {
+            sudo install -m 755 "$binary_path" "$INSTALL_DIR/$BIN_NAME" || {
                 echo "Error: Installation failed" >&2
                 echo "Make sure you have sudo privileges or set LOC_INSTALL to a writable directory" >&2
                 rm -rf "$tmp_dir"
