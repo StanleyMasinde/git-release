@@ -1,8 +1,8 @@
-# git-release
+# Git-Release
 
 A small utility to streamline Rust/Cargo releases. It bumps `Cargo.toml`, commits the change, and creates a ready-to-push annotated git tag in one command.
 
-> **Note:** Currently Rust-only (Cargo projects). Support for other ecosystems such as Node.js (`package.json`) is planned.
+> **Note:** Currently Rust-only (Cargo projects). Support for other ecosystems such as Node.JS (`package.json`) is planned.
 
 ## The Problem
 
