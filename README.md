@@ -2,7 +2,7 @@
 
 A small utility to streamline Rust/Cargo releases. It bumps `Cargo.toml`, commits the change, and creates a ready-to-push annotated git tag in one command.
 
-> **Note:** Currently Rust-only (Cargo projects). Support for other ecosystems such as Node.JS (`package.json`) is planned.
+> **Note:** Currently supports Rust and npm ecosystems. More ecosystems are coming soon.
 
 ## The Problem
 
