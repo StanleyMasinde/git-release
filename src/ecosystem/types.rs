@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::{ValueEnum, builder::PossibleValue};
 
 use crate::ecosystem::next_version::get_next_version;
+use crate::errors::AppError;
 
 #[derive(Debug, Clone)]
 pub enum ReleaseKind {
@@ -46,11 +47,12 @@ pub trait Ecosystem<'a> {
     fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self;
     fn get_directory(&self) -> &PathBuf;
     fn get_release_type(&self) -> &ReleaseKind;
-    fn get_current_version(&self) -> String;
-    fn bump_package_version(&self) -> (String, Vec<String>);
-    fn sync_lockfile(&self) -> Vec<String>;
+    fn get_current_version(&self) -> Result<String, AppError>;
+    fn bump_package_version(&self) -> Result<(String, Vec<String>), AppError>;
+    fn sync_lockfile(&self) -> Result<Vec<String>, AppError>;
 
-    fn get_next_version(&self) -> String {
-        get_next_version(&self.get_current_version(), self.get_release_type())
+    fn get_next_version(&self) -> Result<String, AppError> {
+        let current = self.get_current_version()?;
+        Ok(get_next_version(&current, self.get_release_type()))
     }
 }
