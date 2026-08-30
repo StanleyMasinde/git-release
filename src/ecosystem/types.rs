@@ -16,14 +16,9 @@ pub enum ReleaseKind {
     Patch,
 }
 
-
 impl ValueEnum for ReleaseKind {
     fn value_variants<'a>() -> &'a [Self] {
-        &[
-            ReleaseKind::Major,
-            ReleaseKind::Minor,
-            ReleaseKind::Patch,
-        ]
+        &[ReleaseKind::Major, ReleaseKind::Minor, ReleaseKind::Patch]
     }
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
@@ -52,7 +47,8 @@ impl EcosystemType {
     }
 }
 
-pub trait Ecosystem {
+pub trait Ecosystem<'a> {
+    fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self;
     fn get_current_version(&self) -> String;
     fn bump_package_version(&self) -> String;
     fn sync_lockfile(&self);
@@ -63,16 +59,15 @@ pub struct RustEcosystem<'a> {
     release_type: &'a ReleaseKind,
 }
 
-impl<'a> RustEcosystem<'a> {
-    pub fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self {
+impl<'a> RustEcosystem<'a> {}
+
+impl<'a> Ecosystem<'a> for RustEcosystem<'a> {
+    fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self {
         Self {
             directory,
             release_type,
         }
     }
-}
-
-impl<'a> Ecosystem for RustEcosystem<'a> {
     fn get_current_version(&self) -> String {
         let content = fs::read_to_string(self.directory.join("Cargo.toml")).unwrap();
         let doc: DocumentMut = content.parse().unwrap();
