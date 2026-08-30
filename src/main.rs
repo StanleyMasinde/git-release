@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use git_release::ecosystem::{
     cli,
-    types::{Ecosystem, EcosystemType, ReleaseKind, RustEcosystem},
+    types::{Ecosystem, EcosystemType, NpmEcosystem, ReleaseKind, RustEcosystem},
 };
 use git2::Repository;
 
@@ -26,14 +26,17 @@ fn main() {
                 let ec = RustEcosystem::new(directory.to_path_buf(), release_type);
                 Some(ec.bump_package_version())
             }
-            EcosystemType::Npm => None,
+            EcosystemType::Npm => {
+                let ec = NpmEcosystem::new(directory.to_path_buf(), release_type);
+                Some(ec.bump_package_version())
+            }
         }
         .unwrap();
 
-        commit_changes(&repo, &next_version);
-        add_tag_to_repo(&repo, &next_version);
+        commit_changes(&repo, (&next_version.0, next_version.1));
+        add_tag_to_repo(&repo, &next_version.0);
 
-        println!("Version {next_version} has been released.")
+        println!("Version {} has been released.", next_version.0)
     } else {
         println!("Package ecosystem not supported at the moment.")
     }
@@ -52,13 +55,13 @@ fn add_tag_to_repo(repo: &Repository, next_version: &str) {
     .unwrap();
 }
 
-fn commit_changes(repo: &Repository, next_version: &str) {
+fn commit_changes(repo: &Repository, (next_version, files):(&str,Vec<String>)) {
     let commit_message = format!("Release: v{next_version}");
 
     let mut index = repo.index().unwrap();
     index
         .add_all(
-            ["Cargo.toml", "Cargo.lock"].iter(),
+            files.iter(),
             git2::IndexAddOption::DEFAULT,
             None,
         )
