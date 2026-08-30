@@ -10,12 +10,12 @@ struct PackageVersion {
     version: String,
 }
 
-pub struct NpmEcosystem<'a> {
+pub struct NpmRecipe<'a> {
     directory: PathBuf,
     release_type: &'a ReleaseKind,
 }
 
-impl<'a> Ecosystem<'a> for NpmEcosystem<'a> {
+impl<'a> Ecosystem<'a> for NpmRecipe<'a> {
     fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self {
         Self {
             directory,

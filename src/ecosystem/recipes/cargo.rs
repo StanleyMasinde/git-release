@@ -4,14 +4,12 @@ use toml_edit::DocumentMut;
 
 use crate::ecosystem::types::{Ecosystem, ReleaseKind};
 
-pub struct RustEcosystem<'a> {
+pub struct CargoRecipe<'a> {
     directory: PathBuf,
     release_type: &'a ReleaseKind,
 }
 
-impl<'a> RustEcosystem<'a> {}
-
-impl<'a> Ecosystem<'a> for RustEcosystem<'a> {
+impl<'a> Ecosystem<'a> for CargoRecipe<'a> {
     fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self {
         Self {
             directory,

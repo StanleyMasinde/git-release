@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use git_release::ecosystem::{
     cli,
-    recipes::{cargo::RustEcosystem, npm::NpmEcosystem},
+    recipes::{cargo::CargoRecipe, npm::NpmRecipe},
     types::{Ecosystem, EcosystemType, ReleaseKind},
 };
 use git2::Repository;
@@ -24,11 +24,11 @@ fn main() {
     if let Some(ecosystem) = EcosystemType::detect(directory) {
         let next_version = match ecosystem {
             EcosystemType::Cargo => {
-                let ec = RustEcosystem::new(directory.to_path_buf(), release_type);
+                let ec = CargoRecipe::new(directory.to_path_buf(), release_type);
                 Some(ec.bump_package_version())
             }
             EcosystemType::Npm => {
-                let ec = NpmEcosystem::new(directory.to_path_buf(), release_type);
+                let ec = NpmRecipe::new(directory.to_path_buf(), release_type);
                 Some(ec.bump_package_version())
             }
         }
