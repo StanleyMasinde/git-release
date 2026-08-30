@@ -1,21 +1,13 @@
-use std::{fs, path::PathBuf, process::Command};
+use std::path::PathBuf;
 
-use clap::{
-    ValueEnum, arg,
-    builder::{EnumValueParser, PossibleValue},
-    command, value_parser,
+use git_release::ecosystem::{
+    cli,
+    types::{Ecosystem, EcosystemType, NpmEcosystem, ReleaseKind, RustEcosystem},
 };
 use git2::Repository;
-use toml_edit::DocumentMut;
 
 fn main() {
-    let matches = command!()
-        .arg(arg!([kind] "The release version e.g major.").required(true).value_parser(EnumValueParser::<ReleaseKind>::new()))
-        .arg(arg!(
-            -r --repo <PATH> "Specify the git repo."
-        ).value_parser(value_parser!(PathBuf)))
-        .after_help("This util helps streamline the release process. Calling git release increments the tag.")
-        .get_matches();
+    let matches = cli::cli();
 
     let release_type = matches
         .get_one::<ReleaseKind>("kind")
@@ -26,15 +18,28 @@ fn main() {
         .get_one::<PathBuf>("repo")
         .or(Some(&default_path))
         .expect("The path should exist here.");
-
     let repo = Repository::open(directory).unwrap();
 
-    let next_version = bump_package_version(release_type, directory.to_path_buf());
+    if let Some(ecosystem) = EcosystemType::detect(directory) {
+        let next_version = match ecosystem {
+            EcosystemType::Cargo => {
+                let ec = RustEcosystem::new(directory.to_path_buf(), release_type);
+                Some(ec.bump_package_version())
+            }
+            EcosystemType::Npm => {
+                let ec = NpmEcosystem::new(directory.to_path_buf(), release_type);
+                Some(ec.bump_package_version())
+            }
+        }
+        .unwrap();
 
-    commit_changes(&repo, &next_version);
-    add_tag_to_repo(&repo, &next_version);
+        commit_changes(&repo, (&next_version.0, next_version.1));
+        add_tag_to_repo(&repo, &next_version.0);
 
-    println!("Version {next_version} has been released.")
+        println!("Version {} has been released.", next_version.0)
+    } else {
+        println!("Package ecosystem not supported at the moment.")
+    }
 }
 
 fn add_tag_to_repo(repo: &Repository, next_version: &str) {
@@ -50,54 +55,13 @@ fn add_tag_to_repo(repo: &Repository, next_version: &str) {
     .unwrap();
 }
 
-#[derive(Debug, Clone)]
-enum ReleaseKind {
-    Major,
-    Minor,
-    Patch,
-}
-
-impl ValueEnum for ReleaseKind {
-    fn value_variants<'a>() -> &'a [Self] {
-        &[ReleaseKind::Major, ReleaseKind::Minor, ReleaseKind::Patch]
-    }
-
-    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
-        Some(match self {
-            ReleaseKind::Major => PossibleValue::new("major").help("Select the major option."),
-            ReleaseKind::Minor => PossibleValue::new("minor").help("Select the major option."),
-            ReleaseKind::Patch => PossibleValue::new("patch").help("Select the major option."),
-        })
-    }
-}
-
-fn bump_package_version(release_type: &ReleaseKind, directory: PathBuf) -> std::string::String {
-    let content = fs::read_to_string(directory.join("Cargo.toml")).unwrap();
-    let mut doc: DocumentMut = content.parse().unwrap();
-    let current_version = doc["package"]["version"].as_str().unwrap();
-    let next_version = get_next_version(current_version, release_type);
-
-    doc["package"]["version"] = toml_edit::value(&next_version);
-
-    fs::write(directory.join("Cargo.toml"), doc.to_string()).unwrap();
-
-    Command::new("cargo")
-        .arg("check")
-        .arg("--workspace")
-        .current_dir(directory)
-        .status()
-        .unwrap();
-
-    next_version
-}
-
-fn commit_changes(repo: &Repository, next_version: &str) {
+fn commit_changes(repo: &Repository, (next_version, files):(&str,Vec<String>)) {
     let commit_message = format!("Release: v{next_version}");
 
     let mut index = repo.index().unwrap();
     index
         .add_all(
-            ["Cargo.toml", "Cargo.lock"].iter(),
+            files.iter(),
             git2::IndexAddOption::DEFAULT,
             None,
         )
@@ -128,48 +92,4 @@ fn commit_changes(repo: &Repository, next_version: &str) {
         &parents,        // Parent commits
     )
     .unwrap();
-}
-
-fn get_next_version(current_version: &str, kind: &ReleaseKind) -> String {
-    let mut parts = current_version
-        .split(".")
-        .filter_map(|s| s.parse::<u32>().ok());
-    let (mut major, mut minor, mut patch) = (
-        parts.next().unwrap_or(0),
-        parts.next().unwrap_or(0),
-        parts.next().unwrap_or(0),
-    );
-
-    match kind {
-        ReleaseKind::Major => {
-            major += 1;
-            minor = 0;
-            patch = 0
-        }
-        ReleaseKind::Minor => {
-            minor += 1;
-            patch = 0
-        }
-        ReleaseKind::Patch => patch += 1,
-    }
-
-    format!("{major}.{minor}.{patch}")
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{ReleaseKind, get_next_version};
-
-    #[test]
-    fn test_get_next_version() {
-        let current_version = "2.4.0";
-        let major_version = get_next_version(current_version, &ReleaseKind::Major);
-        assert_eq!(major_version, "3.0.0");
-
-        let minor_version = get_next_version(current_version, &ReleaseKind::Minor);
-        assert_eq!(minor_version, "2.5.0");
-
-        let patch_version = get_next_version(current_version, &ReleaseKind::Patch);
-        assert_eq!(patch_version, "2.4.1");
-    }
 }
