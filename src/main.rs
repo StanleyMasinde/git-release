@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use git_release::ecosystem::{
     cli,
-    types::{Ecosystem, EcosystemType, NpmEcosystem, ReleaseKind, RustEcosystem},
+    recipes::{cargo::RustEcosystem, npm::NpmEcosystem},
+    types::{Ecosystem, EcosystemType, ReleaseKind},
 };
 use git2::Repository;
 
@@ -55,16 +56,12 @@ fn add_tag_to_repo(repo: &Repository, next_version: &str) {
     .unwrap();
 }
 
-fn commit_changes(repo: &Repository, (next_version, files):(&str,Vec<String>)) {
+fn commit_changes(repo: &Repository, (next_version, files): (&str, Vec<String>)) {
     let commit_message = format!("Release: v{next_version}");
 
     let mut index = repo.index().unwrap();
     index
-        .add_all(
-            files.iter(),
-            git2::IndexAddOption::DEFAULT,
-            None,
-        )
+        .add_all(files.iter(), git2::IndexAddOption::DEFAULT, None)
         .unwrap();
     index.write().unwrap();
 
