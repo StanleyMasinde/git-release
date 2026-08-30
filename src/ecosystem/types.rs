@@ -18,9 +18,9 @@ impl ValueEnum for ReleaseKind {
 
     fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
         Some(match self {
-            ReleaseKind::Major => PossibleValue::new("major").help("Select the major option."),
-            ReleaseKind::Minor => PossibleValue::new("minor").help("Select the major option."),
-            ReleaseKind::Patch => PossibleValue::new("patch").help("Select the major option."),
+            ReleaseKind::Major => PossibleValue::new("major").help("Bump major version (X.0.0)"),
+            ReleaseKind::Minor => PossibleValue::new("minor").help("Bump minor version (x.Y.0)"),
+            ReleaseKind::Patch => PossibleValue::new("patch").help("Bump patch version (x.y.Z)"),
         })
     }
 }
