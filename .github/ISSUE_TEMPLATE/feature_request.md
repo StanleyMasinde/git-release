@@ -1,20 +1,23 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: ''
+about: Suggest an improvement or new ecosystem support for git-release
+title: '[Feature] '
+labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when […]
+**What problem does this solve?**
+A clear description of the pain point or limitation you're hitting with `git-release` today.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**Proposed solution**
+Describe the feature you'd like. If it's a new ecosystem, mention:
+- Manifest file name (e.g. `pyproject.toml`)
+- Where the version field lives
+- How the lockfile (if any) should be updated
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Alternatives considered**
+Any other approaches or workarounds you've tried.
 
 **Additional context**
-Add any other context or screenshots about the feature request here.
+Screenshots, links, or examples that might help clarify the request.
