@@ -2,10 +2,7 @@ use std::{fs, path::PathBuf, process::Command};
 
 use toml_edit::DocumentMut;
 
-use crate::ecosystem::{
-    next_version::get_next_version,
-    types::{Ecosystem, ReleaseKind},
-};
+use crate::ecosystem::types::{Ecosystem, ReleaseKind};
 
 pub struct RustEcosystem<'a> {
     directory: PathBuf,
@@ -32,8 +29,7 @@ impl<'a> Ecosystem<'a> for RustEcosystem<'a> {
     fn bump_package_version(&self) -> (String, Vec<String>) {
         let content = fs::read_to_string(self.directory.join("Cargo.toml")).unwrap();
         let mut doc: DocumentMut = content.parse().unwrap();
-        let current_version = &self.get_current_version();
-        let next_version = get_next_version(current_version, self.release_type);
+        let next_version = self.get_next_version();
 
         doc["package"]["version"] = toml_edit::value(&next_version);
 
@@ -51,5 +47,13 @@ impl<'a> Ecosystem<'a> for RustEcosystem<'a> {
             .unwrap();
 
         vec!["Cargo.toml".to_owned(), "Cargo.lock".to_owned()]
+    }
+
+    fn get_directory(&self) -> &PathBuf {
+        &self.directory
+    }
+
+    fn get_release_type(&self) -> &ReleaseKind {
+        self.release_type
     }
 }

@@ -3,10 +3,7 @@ use std::{collections::HashSet, fs, path::PathBuf, process::Command};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::ecosystem::{
-    next_version::get_next_version,
-    types::{Ecosystem, ReleaseKind},
-};
+use crate::ecosystem::types::{Ecosystem, ReleaseKind};
 
 #[derive(Deserialize)]
 struct PackageVersion {
@@ -17,6 +14,7 @@ pub struct NpmEcosystem<'a> {
     directory: PathBuf,
     release_type: &'a ReleaseKind,
 }
+
 impl<'a> Ecosystem<'a> for NpmEcosystem<'a> {
     fn new(directory: PathBuf, release_type: &'a ReleaseKind) -> Self {
         Self {
@@ -39,7 +37,7 @@ impl<'a> Ecosystem<'a> for NpmEcosystem<'a> {
 
         let mut json: Value = serde_json::from_str(&data).unwrap();
 
-        let next_version = get_next_version(&self.get_current_version(), self.release_type);
+        let next_version = self.get_next_version();
 
         json["version"] = Value::String(next_version.clone());
 
@@ -89,5 +87,13 @@ impl<'a> Ecosystem<'a> for NpmEcosystem<'a> {
             commitable_files.push("yarn.lock".to_owned());
         }
         commitable_files
+    }
+
+    fn get_directory(&self) -> &PathBuf {
+        &self.directory
+    }
+
+    fn get_release_type(&self) -> &ReleaseKind {
+        self.release_type
     }
 }
