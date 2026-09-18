@@ -34,4 +34,7 @@ pub enum AppError {
 
     #[error("Released locally, but push failed: {0}")]
     PushFailed(String),
+
+    #[error("GPG signing failed: {0}")]
+    SignFailed(String),
 }

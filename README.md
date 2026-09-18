@@ -1,6 +1,6 @@
 # Git-Release
 
-A small utility to streamline releases. It bumps the version in your manifest file, commits the change, and creates an annotated git tag in one command — optionally pushing them with `--push`.
+A small utility to streamline releases. It bumps the version in your manifest file, commits the change, and creates an annotated git tag in one command — optionally signing them with `-s` / `--sign` and pushing them with `-p` / `--push`.
 
 > **Note:** Currently supports Rust/Cargo and Node.JS (npm, pnpm, yarn) ecosystems. More ecosystems are coming soon.
 
@@ -23,9 +23,10 @@ Given `<kind>` = `major` | `minor` | `patch`:
    - **npm**: stages `package.json` + the detected lockfile (`package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`)
 6. Creates a commit `Release: vX.Y.Z`
 7. Creates an annotated tag `vX.Y.Z` with message `Release: vX.Y.Z` on `HEAD`
-8. If `--push` is set, pushes the current branch and the new annotated tag to the branch's upstream remote
+8. If `-s` / `--sign` is set, GPG-signs the commit and the annotated tag (`user.signingkey` / `gpg.program` from git config)
+9. If `-p` / `--push` is set, pushes the current branch and the new annotated tag to the branch's upstream remote
 
-Without `--push`, run `git push --follow-tags` yourself.
+Without `-p` / `--push`, run `git push --follow-tags` yourself.
 
 ## Requirements
 
@@ -33,7 +34,8 @@ Without `--push`, run `git push --follow-tags` yourself.
 - A supported manifest file at the repo root:
   - `Cargo.toml` (Rust/Cargo)
   - `package.json` (Node.JS — npm, pnpm, or yarn)
-- Git config `user.name` / `user.email` set (used for the commit/tag signature)
+- Git config `user.name` / `user.email` set (used for the commit/tag identity)
+- For `-s` / `--sign`: GnuPG (`gpg`) available, and typically `user.signingkey` set in git config
 
 ## Installation
 
@@ -92,8 +94,11 @@ Options:
   -r, --repo <PATH>
           Specify the git repository. [default: ./]
 
-      --push
+  -p, --push
           Push the commit and annotated tag
+
+  -s, --sign
+          Sign the commit and annotated tag with GPG
 
   -h, --help
           Print help (see a summary with '-h')
@@ -110,11 +115,15 @@ Examples:
 git-release patch          # 0.1.0 → 0.1.1 in ./Cargo.toml (or package.json) + commit + tag v0.1.1
 git-release minor          # 0.1.1 → 0.2.0
 git-release major          # 0.2.0 → 1.0.0
-git-release patch --push   # bump, commit, tag, and push to the upstream remote
+git-release patch -p       # bump, commit, tag, and push to the upstream remote
+git-release patch -s       # bump, GPG-sign the commit and tag
+git-release patch -sp      # bump, sign, and push
 git-release patch -r /path/to/my-project
 ```
 
-Without `--push`, publish the commit and tag yourself:
+Short flags cluster, so `git-release <kind> -sp` is the same as `git-release <kind> --sign --push`.
+
+Without `-p` / `--push`, publish the commit and tag yourself:
 
 ```bash
 git push --follow-tags

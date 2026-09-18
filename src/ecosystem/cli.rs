@@ -10,7 +10,8 @@ pub fn cli() -> clap::ArgMatches {
         .arg(arg!(
             -r --repo <PATH> "Specify the git repository."
         ).value_parser(value_parser!(PathBuf)).default_value("./"))
-        .arg(arg!(--push "Push the commit and annotated tag"))
+        .arg(arg!(-p --push "Push the commit and annotated tag"))
+        .arg(arg!(-s --sign "Sign the commit and annotated tag with GPG"))
         .after_help("This util helps streamline the release process. Calling git release increments the tag.")
         .get_matches()
 }

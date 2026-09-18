@@ -1,4 +1,8 @@
-use std::{path::PathBuf, process};
+use std::{
+    io::Write,
+    path::PathBuf,
+    process::{self, Command, Stdio},
+};
 
 use git_release::{
     ecosystem::{
@@ -8,7 +12,7 @@ use git_release::{
     },
     errors::AppError,
 };
-use git2::{Cred, CredentialType, PushOptions, RemoteCallbacks, Repository};
+use git2::{Cred, CredentialType, ObjectType, Oid, PushOptions, RemoteCallbacks, Repository};
 
 fn main() {
     if let Err(e) = run() {
@@ -32,6 +36,7 @@ fn run() -> Result<(), AppError> {
         .map_err(|_| AppError::RepoNotFound(directory.display().to_string()))?;
 
     let should_push = matches.get_flag("push");
+    let should_sign = matches.get_flag("sign");
 
     let Some(ecosystem) = EcosystemType::detect(directory) else {
         eprintln!(
@@ -51,8 +56,8 @@ fn run() -> Result<(), AppError> {
         }
     }?;
 
-    commit_changes(&repo, (&next_version, files))?;
-    add_tag(&repo, &next_version)?;
+    commit_changes(&repo, (&next_version, files), should_sign)?;
+    add_tag(&repo, &next_version, should_sign)?;
 
     if should_push {
         push_release(&repo, &next_version)?;
@@ -190,7 +195,7 @@ fn ssh_identity_files() -> Vec<PathBuf> {
         .collect()
 }
 
-fn add_tag(repo: &Repository, version: &str) -> Result<(), AppError> {
+fn add_tag(repo: &Repository, version: &str, sign: bool) -> Result<(), AppError> {
     let obj = repo
         .head()
         .map_err(AppError::Git)?
@@ -199,15 +204,35 @@ fn add_tag(repo: &Repository, version: &str) -> Result<(), AppError> {
         .into_object();
 
     let tagger = repo.signature().map_err(|_| AppError::NoSignature)?;
+    let name = format!("v{version}");
+    let message = format!("Release: v{version}");
 
-    repo.tag(
-        &format!("v{version}"),
-        &obj,
-        &tagger,
-        &format!("Release: v{version}"),
-        true,
-    )
-    .map_err(AppError::Git)?;
+    if sign {
+        let payload = annotated_tag_payload(
+            &name,
+            obj.id(),
+            obj.kind().unwrap_or(ObjectType::Commit).str(),
+            &tagger,
+            &message,
+        );
+        let signature = gpg_sign(repo, &payload)?;
+        let mut signed = payload;
+        signed.push_str(&signature);
+        if !signed.ends_with('\n') {
+            signed.push('\n');
+        }
+
+        let oid = repo
+            .odb()
+            .map_err(AppError::Git)?
+            .write(ObjectType::Tag, signed.as_bytes())
+            .map_err(AppError::Git)?;
+        repo.reference(&format!("refs/tags/{name}"), oid, true, &message)
+            .map_err(AppError::Git)?;
+    } else {
+        repo.tag(&name, &obj, &tagger, &message, true)
+            .map_err(AppError::Git)?;
+    }
 
     Ok(())
 }
@@ -215,6 +240,7 @@ fn add_tag(repo: &Repository, version: &str) -> Result<(), AppError> {
 fn commit_changes(
     repo: &Repository,
     (version, files): (&str, Vec<String>),
+    sign: bool,
 ) -> Result<(), AppError> {
     let message = format!("Release: v{version}");
 
@@ -234,8 +260,181 @@ fn commit_changes(
     };
     let parents: Vec<&git2::Commit> = parent.iter().collect();
 
-    repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)
-        .map_err(AppError::Git)?;
+    if sign {
+        let buf = repo
+            .commit_create_buffer(&sig, &sig, &message, &tree, &parents)
+            .map_err(AppError::Git)?;
+        let commit_content = std::str::from_utf8(&buf)
+            .map_err(|_| AppError::SignFailed("commit buffer is not valid UTF-8".to_owned()))?;
+        let signature = gpg_sign(repo, commit_content)?;
+        let oid = repo
+            .commit_signed(commit_content, &signature, None)
+            .map_err(AppError::Git)?;
+        update_head(repo, oid, &message)?;
+    } else {
+        repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)
+            .map_err(AppError::Git)?;
+    }
 
     Ok(())
+}
+
+fn update_head(repo: &Repository, oid: Oid, message: &str) -> Result<(), AppError> {
+    match repo.head() {
+        Ok(mut head) => {
+            if head.is_branch() {
+                head.set_target(oid, message).map_err(AppError::Git)?;
+            } else {
+                repo.set_head_detached(oid).map_err(AppError::Git)?;
+            }
+        }
+        Err(err) if err.code() == git2::ErrorCode::UnbornBranch => {
+            let head = repo.find_reference("HEAD").map_err(AppError::Git)?;
+            let branch_ref = head
+                .symbolic_target()
+                .map_err(AppError::Git)?
+                .ok_or_else(|| AppError::SignFailed("HEAD is unborn but not symbolic".to_owned()))?
+                .to_owned();
+            repo.reference(&branch_ref, oid, true, message)
+                .map_err(AppError::Git)?;
+        }
+        Err(err) => return Err(AppError::Git(err)),
+    }
+    Ok(())
+}
+
+fn annotated_tag_payload(
+    name: &str,
+    target_id: Oid,
+    target_type: &str,
+    tagger: &git2::Signature<'_>,
+    message: &str,
+) -> String {
+    let mut buf = format!(
+        "object {target_id}\ntype {target_type}\ntag {name}\ntagger {}\n\n{message}",
+        format_git_signature(tagger)
+    );
+    if !buf.ends_with('\n') {
+        buf.push('\n');
+    }
+    buf
+}
+
+fn format_git_signature(sig: &git2::Signature<'_>) -> String {
+    let time = sig.when();
+    let offset = time.offset_minutes().unsigned_abs();
+    format!(
+        "{} <{}> {} {}{:02}{:02}",
+        sig.name().unwrap_or(""),
+        sig.email().unwrap_or(""),
+        time.seconds(),
+        time.sign(),
+        offset / 60,
+        offset % 60
+    )
+}
+
+fn gpg_sign(repo: &Repository, payload: &str) -> Result<String, AppError> {
+    let config = repo.config().ok();
+    if let Some(format) = config
+        .as_ref()
+        .and_then(|c| c.get_string("gpg.format").ok())
+    {
+        if format.eq_ignore_ascii_case("ssh") {
+            return Err(AppError::SignFailed(
+                "gpg.format=ssh is not supported; --sign uses OpenPGP via gpg".to_owned(),
+            ));
+        }
+    }
+
+    let program = config
+        .as_ref()
+        .and_then(|c| c.get_string("gpg.program").ok())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "gpg".to_owned());
+
+    let mut cmd = Command::new(&program);
+    cmd.args(["--detach-sign", "--armor"]);
+    if let Some(key) = config
+        .as_ref()
+        .and_then(|c| c.get_string("user.signingkey").ok())
+        .filter(|s| !s.is_empty())
+    {
+        cmd.args(["--local-user", &key]);
+    }
+    cmd.stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit());
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| AppError::SignFailed(format!("could not run `{program}`: {e}")))?;
+
+    {
+        let mut stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| AppError::SignFailed("failed to open gpg stdin".to_owned()))?;
+        stdin
+            .write_all(payload.as_bytes())
+            .map_err(|e| AppError::SignFailed(format!("failed to write to gpg: {e}")))?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|e| AppError::SignFailed(format!("failed to wait for `{program}`: {e}")))?;
+
+    if !output.status.success() {
+        return Err(AppError::SignFailed(format!(
+            "`{program}` exited with status {}",
+            output.status
+        )));
+    }
+
+    let signature = String::from_utf8(output.stdout)
+        .map_err(|_| AppError::SignFailed("gpg produced a non-UTF-8 signature".to_owned()))?;
+
+    if !signature.contains("BEGIN PGP SIGNATURE") {
+        return Err(AppError::SignFailed(
+            "gpg produced no signature (is user.signingkey set and is the secret key available?)"
+                .to_owned(),
+        ));
+    }
+
+    Ok(signature)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use git2::{Signature, Time};
+
+    #[test]
+    fn git_signature_formats_offset() {
+        let sig = Signature::new("Ada", "ada@example.com", &Time::new(1_700_000_000, 180)).unwrap();
+        assert_eq!(
+            format_git_signature(&sig),
+            "Ada <ada@example.com> 1700000000 +0300"
+        );
+
+        let sig =
+            Signature::new("Ada", "ada@example.com", &Time::new(1_700_000_000, -270)).unwrap();
+        assert_eq!(
+            format_git_signature(&sig),
+            "Ada <ada@example.com> 1700000000 -0430"
+        );
+    }
+
+    #[test]
+    fn annotated_tag_payload_ends_with_newline() {
+        let sig = Signature::new("Ada", "ada@example.com", &Time::new(1_700_000_000, 0)).unwrap();
+        let oid = Oid::from_str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap();
+        let payload = annotated_tag_payload("v1.2.3", oid, "commit", &sig, "Release: v1.2.3");
+        assert!(payload.ends_with('\n'));
+        assert!(payload.starts_with("object aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"));
+        assert!(payload.contains("type commit\n"));
+        assert!(payload.contains("tag v1.2.3\n"));
+        assert!(payload.contains("tagger Ada <ada@example.com> 1700000000 +0000\n"));
+        assert!(payload.contains("\n\nRelease: v1.2.3\n"));
+    }
 }
