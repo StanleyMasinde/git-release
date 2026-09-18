@@ -4,9 +4,17 @@ version = "0.8.0"
 edition = "2024"
 
 [dependencies]
-clap = { version = "4.6.6", features = ["cargo"] }
+clap = { version = "4.4", features = ["cargo"] }
 git2 = { version = "0.21.0", features = ["https", "ssh"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 thiserror = "2.0.20"
 toml_edit = "0.25.13"
+
+[build-dependencies]
+clap_mangen = "0.3.3"
+clap = { version = "4.4", features = ["cargo"] }
+toml_edit = "0.25.13"
+serde_json = "1.0.151"
+git2 = { version = "0.21.0" }
+thiserror = "2.0.20"

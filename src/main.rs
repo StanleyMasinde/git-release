@@ -22,7 +22,7 @@ fn main() {
 }
 
 fn run() -> Result<(), AppError> {
-    let matches = cli::cli();
+    let matches = cli::cli().get_matches();
 
     let release_type = matches
         .get_one::<ReleaseKind>("kind")

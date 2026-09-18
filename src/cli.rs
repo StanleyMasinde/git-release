@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{arg, builder::EnumValueParser, command, value_parser};
 
-use crate::ecosystem::types::ReleaseKind;
+use crate::types::ReleaseKind;
 
 pub fn cli() -> clap::Command {
     command!()
