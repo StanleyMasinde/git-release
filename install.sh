@@ -6,6 +6,7 @@ REPO="StanleyMasinde/git-release"
 BIN_NAME="git-release"
 VERSION="${1:-latest}"
 INSTALL_DIR="${LOC_INSTALL:-/usr/local/bin}"
+MAN_DIR="${LOC_MAN:-$(dirname "$INSTALL_DIR")/share/man/man1}"
 
 detect_target() {
     local os arch
@@ -117,6 +118,27 @@ verify_checksum() {
         echo "Please try downloading again or report this issue." >&2
         return 1
     fi
+}
+
+install_manpage() {
+    local man_src
+    man_src=$(find . -type f -name "${BIN_NAME}.1" -print -quit 2>/dev/null || true)
+
+    # Older releases don't ship a man page; that's fine
+    if [ -z "$man_src" ]; then
+        return 0
+    fi
+
+    echo "Installing man page to $MAN_DIR..."
+
+    if mkdir -p "$MAN_DIR" 2>/dev/null && [ -w "$MAN_DIR" ]; then
+        install -m 644 "$man_src" "$MAN_DIR/${BIN_NAME}.1"
+    else
+        sudo mkdir -p "$MAN_DIR" && sudo install -m 644 "$man_src" "$MAN_DIR/${BIN_NAME}.1"
+    fi || {
+        echo "Warning: Could not install the man page, skipping" >&2
+        return 0
+    }
 }
 
 install_binary() {
@@ -254,6 +276,15 @@ install_binary() {
             }
         fi
 
+        fi
+
+        if [ "$ext" = "tar.gz" ]; then
+            install_manpage
+        fi
+
+        cd - > /dev/null
+        rm -rf "$tmp_dir"
+
         cd - > /dev/null
         rm -rf "$tmp_dir"
 
@@ -280,6 +311,7 @@ Or with a specific version:
 
 Environment Variables:
   LOC_INSTALL    Installation directory (default: /usr/local/bin)
+  LOC_MAN        Man page directory (default: <LOC_INSTALL>/../share/man/man1)
 
 Examples:
   # Install latest version
