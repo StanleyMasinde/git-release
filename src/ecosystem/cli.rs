@@ -8,8 +8,9 @@ pub fn cli() -> clap::ArgMatches {
     command!()
         .arg(arg!([kind] "The release version e.g. major").required(true).value_parser(EnumValueParser::<ReleaseKind>::new()))
         .arg(arg!(
-            -r --repo <PATH> "Specify the git repo [default: ./]"
-        ).value_parser(value_parser!(PathBuf)))
+            -r --repo <PATH> "Specify the git repository."
+        ).value_parser(value_parser!(PathBuf)).default_value("./"))
+        .arg(arg!(--push "Push the commit and annotated tag"))
         .after_help("This util helps streamline the release process. Calling git release increments the tag.")
         .get_matches()
 }
