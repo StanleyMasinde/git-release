@@ -1,3 +1,22 @@
+## [0.9.0] - 2026-09-18
+
+### Features
+
+- Add manpage generation
+
+### Other
+
+- V0.9.0
+
+### Documentation
+
+- Update changelog
+- Ddd GitHub downloads badge to README
+
+### Miscellaneous Tasks
+
+- Add the generated manpage to the archive
+- Update the install script to be aware of the manpage
 ## [0.8.0] - 2026-09-18
 
 ### Features
