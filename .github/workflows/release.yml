@@ -54,7 +54,8 @@ jobs:
         shell: bash
         run: |
           cd target/${{ matrix.target }}/release
-          tar czf ../../../${{ env.BIN_NAME }}-${{ matrix.target }}.tar.gz ${{ env.BIN_NAME }}
+          cp build/*/out/${{ env.BIN_NAME }}.1 .
+          tar czf ../../../${{ env.BIN_NAME }}-${{ matrix.target }}.tar.gz ${{ env.BIN_NAME }} ${{ env.BIN_NAME }}.1
           cd -
 
       - name: Package (windows)
@@ -62,7 +63,9 @@ jobs:
         shell: pwsh
         run: |
           cd target/${{ matrix.target }}/release
-          Compress-Archive -Path ${{ env.BIN_NAME }}.exe -DestinationPath ../../../${{ env.BIN_NAME }}-${{ matrix.target }}.zip
+          $man = Get-ChildItem -Path build -Recurse -Filter "${{ env.BIN_NAME }}.1" | Select-Object -First 1
+          Copy-Item $man.FullName .
+          Compress-Archive -Path ${{ env.BIN_NAME }}.exe, ${{ env.BIN_NAME }}.1 -DestinationPath ../../../${{ env.BIN_NAME }}-${{ matrix.target }}.zip
           cd -
 
       - name: Upload artifact
