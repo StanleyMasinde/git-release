@@ -1,6 +1,6 @@
 # Git-Release
 
-A small utility to streamline releases. It bumps the version in your manifest file, commits the change, and creates a ready-to-push annotated git tag in one command.
+A small utility to streamline releases. It bumps the version in your manifest file, commits the change, and creates an annotated git tag in one command — optionally pushing them with `--push`.
 
 > **Note:** Currently supports Rust/Cargo and Node.JS (npm, pnpm, yarn) ecosystems. More ecosystems are coming soon.
 
@@ -22,9 +22,10 @@ Given `<kind>` = `major` | `minor` | `patch`:
    - **Cargo**: runs `cargo check --workspace`, stages `Cargo.toml` + `Cargo.lock`
    - **npm**: stages `package.json` + the detected lockfile (`package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`)
 6. Creates a commit `Release: vX.Y.Z`
-7. Creates an annotated tag `vX.Y.Z` with message `Release: vX.Y.Z` on `HEAD` — ready to push
+7. Creates an annotated tag `vX.Y.Z` with message `Release: vX.Y.Z` on `HEAD`
+8. If `--push` is set, pushes the current branch and the new annotated tag to the branch's upstream remote
 
-It does **not** push. Run `git push --follow-tags` yourself.
+Without `--push`, run `git push --follow-tags` yourself.
 
 ## Requirements
 
@@ -89,7 +90,10 @@ Arguments:
 
 Options:
   -r, --repo <PATH>
-          Specify the git repo [default: ./]
+          Specify the git repository. [default: ./]
+
+      --push
+          Push the commit and annotated tag
 
   -h, --help
           Print help (see a summary with '-h')
@@ -106,10 +110,11 @@ Examples:
 git-release patch          # 0.1.0 → 0.1.1 in ./Cargo.toml (or package.json) + commit + tag v0.1.1
 git-release minor          # 0.1.1 → 0.2.0
 git-release major          # 0.2.0 → 1.0.0
+git-release patch --push   # bump, commit, tag, and push to the upstream remote
 git-release patch -r /path/to/my-project
 ```
 
-Then push the commit and tag:
+Without `--push`, publish the commit and tag yourself:
 
 ```bash
 git push --follow-tags

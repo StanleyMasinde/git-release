@@ -31,4 +31,7 @@ pub enum AppError {
 
     #[error("Git user.name and user.email must be set in your git config")]
     NoSignature,
+
+    #[error("Released locally, but push failed: {0}")]
+    PushFailed(String),
 }
