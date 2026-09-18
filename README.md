@@ -1,5 +1,7 @@
 # Git-Release
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/StanleyMasinde/git-release/total?style=for-the-badge)
+
 A small utility to streamline releases. It bumps the version in your manifest file, commits the change, and creates an annotated git tag in one command — optionally signing them with `-s` / `--sign` and pushing them with `-p` / `--push`.
 
 > **Note:** Currently supports Rust/Cargo and Node.JS (npm, pnpm, yarn) ecosystems. More ecosystems are coming soon.
