@@ -276,14 +276,9 @@ install_binary() {
             }
         fi
 
-        fi
-
         if [ "$ext" = "tar.gz" ]; then
             install_manpage
         fi
-
-        cd - > /dev/null
-        rm -rf "$tmp_dir"
 
         cd - > /dev/null
         rm -rf "$tmp_dir"
