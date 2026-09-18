@@ -1,4 +1,4 @@
-## [unreleased]
+## [0.8.0] - 2026-09-18
 
 ### Features
 
@@ -7,10 +7,17 @@
 - Add a changelog with git cliff
 - Update cliff.toml
 
+### Other
+
+- V0.8.0
+
+### Documentation
+
+- Update the changelog
+
 ### Miscellaneous Tasks
 
 - Update issue templates
-
 ## [0.7.0] - 2026-08-30
 
 ### Other
