@@ -5,10 +5,12 @@
 - Add --push to publish the release
 - Add -s/--sign to GPG-sign the release commit and tag
 - Add a changelog with git cliff
+- Update cliff.toml
 
 ### Miscellaneous Tasks
 
 - Update issue templates
+
 ## [0.7.0] - 2026-08-30
 
 ### Other
